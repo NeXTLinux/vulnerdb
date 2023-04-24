@@ -1,0 +1,115 @@
+name: 'Daily Data Sync'
+on:
+  # allow for kicking off data syncs manually
+  workflow_dispatch:
+
+  # run 1 AM (UTC) daily
+  schedule:
+    - cron:  '0 1 * * *'
+env:
+  CGO_ENABLED: "0"
+  SLACK_NOTIFICATIONS: true
+
+jobs:
+  discover-providers:
+    name: "Discover vulnerability providers"
+    runs-on: ubuntu-20.04
+    outputs:
+      providers: ${{ steps.read-providers.outputs.providers }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Bootstrap environment
+        uses: ./.github/actions/bootstrap
+        with:
+          python: false
+
+      - name: Login to ghcr.io
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | oras login ghcr.io --username ${{ github.actor }} --password-stdin
+
+      - name: Read configured providers
+        id: read-providers
+        # TODO: honor CI overrides
+        run: |
+          content=`make show-providers`
+          echo "providers=$content" >> $GITHUB_OUTPUT
+
+  update-provider:
+    name: "Update provider"
+    needs: discover-providers
+    runs-on: ubuntu-20.04
+    # set the permissions granted to the github token to publish to ghcr.io
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        provider: ${{fromJson(needs.discover-providers.outputs.providers)}}
+      fail-fast: false
+    steps:
+
+      - uses: actions/checkout@v3
+
+      - name: Bootstrap environment
+        uses: ./.github/actions/bootstrap
+        with:
+          python: false
+
+      - name: Login to ghcr.io
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | oras login ghcr.io --username ${{ github.actor }} --password-stdin
+
+      - name: Download the existing provider state
+        run: bash -c "make download-provider-cache provider=${{ matrix.provider }} date=latest || true"
+
+      - name: Update the provider
+        run: make refresh-provider-cache provider=${{ matrix.provider }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: workflow,eventName
+          text: Daily Data Sync for ${{ matrix.provider }} failed
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TOOLBOX_WEBHOOK_URL }}
+        if: ${{ failure() && env.SLACK_NOTIFICATIONS == 'true' }}
+
+      - name: Upload the provider workspace state
+        # even if the job fails, we want to upload yesterdays cache as todays cache to continue the DB build
+        if: ${{ always() }}
+        run: make upload-provider-cache provider=${{ matrix.provider }}
+
+  aggregate-cache:
+    name: "Aggregate provider cache"
+    runs-on: ubuntu-20.04
+    if: ${{ always() }}
+    needs:
+      - update-provider
+      - discover-providers
+    # set the permissions granted to the github token to read the pull cache from ghcr.io
+    permissions:
+      packages: write
+      contents: read
+    steps:
+
+      - uses: actions/checkout@v3
+
+      - name: Bootstrap environment
+        uses: ./.github/actions/bootstrap
+        with:
+          python: false
+
+      - name: Login to ghcr.io
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | oras login ghcr.io --username ${{ github.actor }} --password-stdin
+
+      - name: Aggregate vulnerability data
+        run: make aggregate-all-provider-cache
+        env:
+          PROVIDERS_USED: ${{ needs.discover-providers.outputs.providers }}
+
+      - name: Upload vulnerability data cache image
+        run: make upload-all-provider-cache
