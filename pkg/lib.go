@@ -3,7 +3,7 @@ package pkg
 import (
 	"github.com/wagoodman/go-partybus"
 
-	"github.com/nextlinux/go-logger"
+	"github.com/nextlinux/gologger"
 	"github.com/nextlinux/vulnersdb/internal/bus"
 	"github.com/nextlinux/vulnersdb/internal/log"
 )

@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/go-getter/helper/url"
 	"github.com/wagoodman/go-progress"
 
-	"github.com/nextlinux/go-logger"
+	"github.com/nextlinux/gologger"
 	"github.com/nextlinux/vulnersdb/internal/log"
 )
 

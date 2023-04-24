@@ -3,7 +3,7 @@ package application
 import (
 	"github.com/spf13/viper"
 
-	"github.com/nextlinux/go-logger"
+	"github.com/nextlinux/gologger"
 )
 
 // Logging contains all logging-related configuration options available to the user via the application config.

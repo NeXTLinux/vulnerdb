@@ -14,7 +14,7 @@ import (
 	"github.com/wagoodman/go-partybus"
 	"gopkg.in/yaml.v3"
 
-	"github.com/nextlinux/go-logger/adapter/logrus"
+	"github.com/nextlinux/gologger/adapter/logrus"
 	"github.com/nextlinux/vulnersdb/cmd/vulnersdb/cli/options"
 	"github.com/nextlinux/vulnersdb/internal"
 	"github.com/nextlinux/vulnersdb/internal/bus"

@@ -10,7 +10,7 @@ import (
 	"github.com/wagoodman/go-partybus"
 	"github.com/wagoodman/go-progress"
 
-	"github.com/nextlinux/go-logger"
+	"github.com/nextlinux/gologger"
 	"github.com/nextlinux/vulnersdb/internal/log"
 	"github.com/nextlinux/vulnersdb/pkg/event"
 )
